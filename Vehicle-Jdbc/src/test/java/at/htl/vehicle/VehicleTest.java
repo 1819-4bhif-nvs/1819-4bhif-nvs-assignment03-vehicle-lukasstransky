@@ -4,10 +4,10 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.CoreMatchers.is;
 
 public class VehicleTest {
     public static final String DRIVER_STRING = "org.apache.derby.jdbc.ClientDriver";
@@ -31,6 +31,13 @@ public class VehicleTest {
 
     @AfterClass
     public static void teardownJdbc(){
+        /*try{
+            conn.createStatement().execute("DROP TABLE vehicle");
+            System.out.println("Tabelle VEHICLE gelöscht");
+        } catch (SQLException e) {
+            System.out.println("Tablle VEHICLE konnte nicht gelöscht werden:\n" + e.getMessage());
+        }*/
+
         try {
             if(conn != null && !conn.isClosed()){
                 conn.close();
@@ -47,6 +54,7 @@ public class VehicleTest {
             Statement stmt = conn.createStatement();
             String sql = "CREATE TABLE vehicle (" +
                     "ID INT constraint vehicle_pk PRIMARY KEY," +
+                    //" GENERATED ALWAYS AS IDENTITY (START WITH 1, INCREMENT BY 1)," *
                     "brand VARCHAR(255) NOT NULL," +
                     "type VARCHAR(255) NOT NULL" +
                     ")";
@@ -54,6 +62,42 @@ public class VehicleTest {
         } catch (SQLException e) {
             System.err.println(e.getMessage());
             //e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void dml(){
+        //Daten einfügen
+        int countInserts = 0;
+        try{
+            Statement stmt = conn.createStatement();
+            String sql = "INSERT INTO vehicle (id, brand, type) values (1, 'Opel', 'Commodore')";
+            countInserts += countInserts + stmt.executeUpdate(sql);
+            sql = "INSERT INTO vehicle (id, brand, type) values (2, 'Opel', 'Kapitän')";
+            countInserts += stmt.executeUpdate(sql);
+            sql = "INSERT INTO vehicle (id, brand, type) values (3, 'Opel', 'Kadett')";
+            countInserts += stmt.executeUpdate(sql);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+        assertThat(countInserts, is(3));
+
+        //Daten abfragen
+        try{
+            PreparedStatement pstmt = conn.prepareStatement("SELECT id, brand, type FROM vehicle");
+            ResultSet rs = pstmt.executeQuery();
+
+            rs.next();
+            assertThat(rs.getString("BRAND"), is("Opel"));
+            assertThat(rs.getString("TYPE"), is("Commodore"));
+            rs.next();
+            assertThat(rs.getString("BRAND"), is("Opel"));
+            assertThat(rs.getString("TYPE"), is("Kapitän"));
+            rs.next();
+            assertThat(rs.getString("BRAND"), is("Opel"));
+            assertThat(rs.getString("TYPE"), is("Kadett"));
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
     }
 }
